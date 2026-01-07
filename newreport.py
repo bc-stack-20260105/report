@@ -6,7 +6,7 @@ import json
 
 # --- 1. 頁面基本設定 ---
 st.set_page_config(page_title="社交工程演練完整報告工具", layout="wide")
-st.title("📊 社交工程演練統計工具 (全圖表預覽版)")
+st.title("📊 社交工程演練統計報告")
 
 # --- 2. 側邊欄：參數設定 ---
 st.sidebar.header("⚙️ 參數設定")
@@ -115,7 +115,7 @@ def generate_professional_advice(df, total_accounts, sum2, sum4, final_s, sum7):
         advice.append(f"✅ **安全意識達標**：本次無人輸入帳號密碼，顯示同仁在關鍵步驟（輸入憑證）具有高度警覺。")
     # 針對統計五：主旨攻擊面分析
     if top_subject is not None:
-        advice.append(f"📝 **主旨分析**：最成功的誘餌為「{top_subject['郵件主旨']}」。這類主題最易使同仁放下戒心，建議未來教育訓練應加強此類案例宣導。")
+        advice.append(f"📝 **主旨分析**：最成功的誘餌為「{top_subject['郵件主旨']}」。這類「{ '公務相關' if '通知' in top_subject['郵件主旨'] else '行政福利' }」主題最易使同仁放下戒心，建議未來教育訓練應加強此類案例宣導。")
 
     # 針對統計四：高風險單位
     if top_dept is not None:
@@ -135,7 +135,7 @@ def generate_professional_advice(df, total_accounts, sum2, sum4, final_s, sum7):
     
     return "\n\n".join(advice)	
 	
-# --- 4. HTML 匯出函式 (上圖下表版) ---
+# --- 4. HTML 匯出函式 (PDF 最佳化版) ---
 def generate_html_report(report_items):
     html_content = f"""
     <html><head><meta charset="utf-8">
@@ -145,65 +145,51 @@ def generate_html_report(report_items):
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
         @media print {{
-            @page {{ margin: 1cm; size: auto; }}
+            @page {{ margin: 1.5cm; size: auto; }}
             body {{ background-color: white !important; padding: 0 !important; }}
-            .section {{ page-break-inside: avoid; border: 1px solid #eee !important; box-shadow: none !important; margin-bottom: 20px !important; }}
+            .section {{ box-shadow: none !important; border: 1px solid #eee !important; page-break-inside: avoid; }}
             .btn {{ display: none !important; }}
         }}
-        body {{ padding: 30px; background-color: #f8f9fa; font-family: "Microsoft JhengHei", sans-serif; }}
-        .section {{ background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 30px; }}
+        body {{ padding: 40px; background-color: #f8f9fa; font-family: "Microsoft JhengHei", sans-serif; }}
+        .section {{ background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 40px; }}
         .metric-box {{ background: #fdfdfe; border-left: 5px solid #0d6efd; padding: 15px; margin-bottom: 20px; }}
-        .metric-number {{ font-size: 24px; font-weight: bold; color: #0d6efd; display: block; }}
-        .text-box {{ background: #fff; border-left: 5px solid #198754; padding: 15px; font-size: 16px; line-height: 1.8; white-space: pre-wrap; margin-bottom: 20px; border: 1px solid #eee; }}
-        table {{ font-size: 12px !important; width: 100% !important; margin-top: 10px; }}
-        .chart-wrapper {{ width: 100%; display: flex; justify-content: center; margin-bottom: 25px; }}
-        .chart-container {{ width: 100%; max-width: 800px; min-height: 350px; }}
+        .metric-label {{ font-size: 14px; color: #666; }}
+        .metric-number {{ font-size: 28px; font-weight: bold; color: #0d6efd; display: block; }}
+        .text-box {{ background: #fff; border-left: 5px solid #198754; padding: 15px; font-size: 16px; line-height: 1.8; white-space: pre-wrap; }}
+        table {{ width: 100% !important; font-size: 12px !important; margin-top: 15px; }}
     </style></head><body><div class="container">
-    <h1 class="text-center mb-4">社交工程演練統計報告</h1>
+    <h1 class="text-center mb-5">社交工程演練統計報告</h1>
     """
-
     for i, item in enumerate(report_items):
         chart_id = f"vis{i}"
+        # 修正 c_json 未定義問題
         c_json = item["chart"].to_json() if item.get("chart") else None
         
-        html_content += f'<div class="section"><h4 class="mb-4" style="border-bottom: 2px solid #333; padding-bottom: 10px;">{item["title"]}</h4>'
+        html_content += f'<div class="section"><h3 class="mb-4">{item["title"]}</h3>'
         
-        # 1. 顯示大數字 (統計一)
+        # 顯示統計大數值 (統計一)
         if item.get("metric_value"):
-            html_content += f'<div class="metric-box"><span>實測總人數：</span><span class="metric-number">{item["metric_value"]}</span></div>'
-
-        # 2. 顯示專家建議文字 (專家建議)
+            html_content += f'<div class="metric-box"><span class="metric-label">數據統計</span><span class="metric-number">{item["metric_value"]}</span></div>'
+        
+        # 顯示建議文字 (專家建議)
         if item.get("text"):
             html_content += f'<div class="text-box">{item["text"]}</div>'
-
-        # 3. 上方：顯示圖表 (置中且較大)
+        
+        # 顯示圖表
         if c_json:
-            html_content += f"""
-            <div class="chart-wrapper">
-                <div id="{chart_id}" class="chart-container"></div>
-            </div>
-            """
-
-        # 4. 下方：顯示表格 (詳細清單)
+            html_content += f"<div class='mb-4' id='{chart_id}'></div>"
+            html_content += f"<script>vegaEmbed('#{chart_id}', {c_json}, {{actions: false}});</script>"
+        
+        # 直接顯示詳細清單 (不下拉)
         if item.get("df") is not None:
-            html_content += f"""
-            <div class="table-area">
-                <p class="fw-bold mb-2">📋 詳細名單與數據統計：</p>
-                <div class="table-responsive">
-                    {item['df'].to_html(classes='table table-sm table-bordered table-striped', index=False)}
-                </div>
-            </div>
-            """
-
-        # 渲染圖表指令
-        if c_json:
-            html_content += f"<script>vegaEmbed('#{chart_id}', {c_json}, {{actions: false, renderer: 'svg'}});</script>"
+            html_content += f'<div class="fw-bold mt-4">📋 詳細名單數據：</div>'
+            html_content += f'<div class="table-responsive">{item["df"].to_html(classes="table table-sm table-bordered table-striped", index=False)}</div>'
             
         html_content += "</div>"
         
     html_content += "</div></body></html>"
     b64 = base64.b64encode(html_content.encode()).decode()
-    return f'<a href="data:text/html;base64,{b64}" download="演練報告_上圖下表版.html" class="btn btn-primary w-100 p-3">📥 下載正式 PDF 格式報告</a>'
+    return f'<a href="data:text/html;base64,{b64}" download="演練詳細報告.html" class="btn btn-success w-100 p-3">📥 下載完整報告 (下載後開啟按 Ctrl+P 存為 PDF)</a>'
 
 # --- 5. 主程式 ---
 if uploaded_file is not None and config_file is not None:
@@ -238,9 +224,10 @@ if uploaded_file is not None and config_file is not None:
             "人": [len(openers | active_u), df_u2[df_u2['std_tag'] == "點閱連結"][email_col].nunique(), df_u2[df_u2['std_tag'] == "開啟附件"][email_col].nunique(), df_u2[df_u2['std_tag'] == "輸入帳密"][email_col].nunique()]
         })
         sum2["比率"] = sum2["人"].apply(lambda x: f"{(x/total_accounts)*100:.2f}%")
-        st.table(sum2.set_index("項目"))
+        
         draw_horizontal_label_chart(sum2, "項目", "人") # 網頁顯示
         c2_exp = draw_horizontal_label_chart(sum2, "項目", "人", is_export=True) # 報告用
+        st.table(sum2.set_index("項目"))
         report_items.append({"title": "統計二：個人行為分布圖與數據", "df": sum2, "chart": c2_exp})
 
         # --- 統計三：郵件主旨行為統計 ---
@@ -253,18 +240,20 @@ if uploaded_file is not None and config_file is not None:
             "次數": [len(pd.concat([opens_u3, active_u3]).drop_duplicates()), len(df_u3[df_u3['std_tag'] == "點閱連結"]), len(df_u3[df_u3['std_tag'] == "開啟附件"]), len(df_u3[df_u3['std_tag'] == "輸入帳密"])]
         })
         sum3["比率"] = sum3["次數"].apply(lambda x: f"{(x/total_emails_sent)*100:.2f}%")
-        st.table(sum3.set_index("項目"))
+        
         draw_horizontal_label_chart(sum3, "項目", "次數", color="#ED7D31") # 網頁顯示
         c3_exp = draw_horizontal_label_chart(sum3, "項目", "次數", color="#ED7D31", is_export=True) # 報告用
+        st.table(sum3.set_index("項目"))
         report_items.append({"title": "統計三：郵件行為總次數統計", "df": sum3, "chart": c3_exp})
 
         # --- 統計四：各單位受測人數分布 ---
         st.divider(); st.subheader("🏢 統計四：各單位受測人數分布")
         sum4_df = df[df['std_tag'] != "其他"][[dept_col, email_col]].drop_duplicates()
         sum4_result = sum4_df.groupby(dept_col).size().reset_index(name='人數').sort_values(by='人數', ascending=False)
-        st.table(sum4_result.set_index(dept_col))
+        
         draw_horizontal_label_chart(sum4_result, dept_col, "人數", color="#70AD47") # 網頁顯示
         c4_exp = draw_horizontal_label_chart(sum4_result, dept_col, "人數", color="#70AD47", is_export=True)
+        st.table(sum4_result.set_index(dept_col))
         report_items.append({"title": "統計四：各單位分布名單", "df": sum4_result, "chart": c4_exp})
 
         # --- 統計五：郵件主旨影響力分析 ---
@@ -274,9 +263,10 @@ if uploaded_file is not None and config_file is not None:
         final_s = pd.merge(all_s_df, actual_s, on=subject_col, how='left').fillna(0)
         final_s['觸及人數'] = final_s['觸及人數'].astype(int)
         final_s = final_s.sort_values(by='觸及人數', ascending=False)
-        st.table(final_s.set_index(subject_col))
+        
         draw_horizontal_label_chart(final_s, subject_col, "觸及人數", color="#A5A5A5") # 網頁顯示
         c5_exp = draw_horizontal_label_chart(final_s, subject_col, "觸及人數", color="#A5A5A5", is_export=True)
+        st.table(final_s.set_index(subject_col))
         report_items.append({"title": "統計五：主旨影響力詳細名單", "df": final_s, "chart": c5_exp})
 
         # --- 統計六：個人重複行為分析 (僅修正表格顯示) ---
@@ -294,14 +284,13 @@ if uploaded_file is not None and config_file is not None:
             f_dist['標籤'] = f_dist['次數'].apply(lambda x: f"{tag[:2]}{x}封信")
             
             st.markdown(f"#### 🏷️ 【{tag}】分佈")
-            
-            # --- 補回統計表格 ---
-            st.table(f_dist[['標籤', '帳號數量']].set_index('標籤'))
-            
+                      
             # 保持原有的圖表預覽
             draw_horizontal_label_chart(f_dist, "標籤", "帳號數量", color="#4472C4")
             c6_exp = draw_horizontal_label_chart(f_dist, "標籤", "帳號數量", color="#4472C4", is_export=True)
             
+            st.table(f_dist[['標籤', '帳號數量']].set_index('標籤'))
+			
             # 保持原有的詳細清單展開
             with st.expander(f"🔍 查看【{tag}】詳細名單"): 
                 st.dataframe(det.sort_values(by='次數', ascending=False), use_container_width=True)
@@ -315,10 +304,11 @@ if uploaded_file is not None and config_file is not None:
             device_df['裝置類型'] = device_df[ua_col].apply(parse_device)
             sum7 = device_df['裝置類型'].value_counts().reset_index()
             sum7.columns = ['裝置類型', '帳號數量']
-            st.table(sum7.set_index('裝置類型'))
+            
             draw_horizontal_label_chart(sum7, "裝置類型", "帳號數量", color="#7294D4") # 網頁顯示
             c7_exp = draw_horizontal_label_chart(sum7, "裝置類型", "帳號數量", color="#7294D4", is_export=True)
-            
+            st.table(sum7.set_index('裝置類型'))
+			
             list_cols = [name_col, email_col, '裝置類型', ua_col]
             device_list = device_df[list_cols].copy().sort_values(by='裝置類型')
             with st.expander("🔍 查看載具詳細名單"): st.dataframe(device_list, use_container_width=True)
@@ -346,4 +336,3 @@ if uploaded_file is not None and config_file is not None:
 
     except Exception as e: st.error(f"分析失敗: {e}")
 else: st.info("💡 請上傳檔案以開始分析。")
-
