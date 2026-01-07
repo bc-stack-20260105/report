@@ -115,7 +115,7 @@ def generate_professional_advice(df, total_accounts, sum2, sum4, final_s, sum7):
         advice.append(f"✅ **安全意識達標**：本次無人輸入帳號密碼，顯示同仁在關鍵步驟（輸入憑證）具有高度警覺。")
     # 針對統計五：主旨攻擊面分析
     if top_subject is not None:
-        advice.append(f"📝 **主旨分析**：最成功的誘餌為「{top_subject['郵件主旨']}」。這類「{ '公務相關' if '通知' in top_subject['郵件主旨'] else '行政福利' }」主題最易使同仁放下戒心，建議未來教育訓練應加強此類案例宣導。")
+        advice.append(f"📝 **主旨分析**：最成功的誘餌為「{top_subject['郵件主旨']}」。這類主題最易使同仁放下戒心，建議未來教育訓練應加強此類案例宣導。")
 
     # 針對統計四：高風險單位
     if top_dept is not None:
@@ -346,3 +346,4 @@ if uploaded_file is not None and config_file is not None:
 
     except Exception as e: st.error(f"分析失敗: {e}")
 else: st.info("💡 請上傳檔案以開始分析。")
+
