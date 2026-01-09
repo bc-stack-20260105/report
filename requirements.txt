@@ -2,5 +2,4 @@ streamlit
 pandas
 altair
 markdown
-google-generativeai
-openpyxl
+google-genai
