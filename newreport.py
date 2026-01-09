@@ -11,7 +11,25 @@ from google import genai
 # 1. 頁面基本設定
 # =================================================================
 st.set_page_config(page_title="社交工程演練完整報告工具", layout="wide")
+st.markdown("""
+    <style>
+    /* 針對 st.dataframe 或 st.table 的數值欄位強制靠左 */
+    /* 這裡使用 div 選取器是為了確保覆蓋掉內建的數值靠右樣式 */
+    div[data-testid="stTable"] td, 
+    div[data-testid="stTable"] th,
+    div[data-testid="stDataFrame"] td,
+    div[data-testid="stDataFrame"] [style*="text-align: right"] {
+        text-align: left !important;
+        justify-content: flex-start !important;
+    }
 
+    /* 讓整個主頁面的容器寬度極大化，達成真正的 100% 佔滿感 */
+    .main .block-container {
+        max-width: 95% !important;
+        padding-top: 2rem !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 # =================================================================
 # 2. 側邊欄：參數設定與 AI 配置
 # =================================================================
@@ -165,7 +183,7 @@ def generate_professional_advice(df, total_accounts, sum2, sum4, final_s, sum7):
     if top_dept is not None:
         advice.append(f"🏢 重點強化單位：{top_dept['單位']} 的遭誘騙人數比例最高。建議針對該部門進行小規模的「強化補測」或實體宣導。")
 
-    # 針對統計七：載具安全性
+    # 針對統計七：裝置安全性
     if mobile_rate > 20:
         advice.append(f"📱 行動辦公風險：行動裝置點閱占比達 {mobile_rate:.1f}%。由於手機螢幕較小，較難辨識完整郵件地址與連結 URL，建議評估導入行動端郵件過濾機制。")
     advice.append("""
@@ -253,6 +271,30 @@ def generate_html_report(report_items, title_name=""):
         .metric-label {{ font-size: 0.9em; color: #666; margin-right: 15px; }}
         .metric-number {{ font-size: 1.5em; font-weight: bold; color: #0d6efd; }}
         h1 {{ color: #333; }}
+        /* 確保表格整體靠左，且文字靠左 */
+        /* 表格滿版設計 */
+        table {{
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin: 20px 0 !important;
+            table-layout: auto !important; /* 核心：自動根據文字長度調整欄位寬 */
+        }}
+        
+        th, td {{
+            text-align: left !important;
+            padding: 12px !important;
+            border: 1px solid #dee2e6 !important; /* 加強邊框線條 */
+        }}
+        
+        th {{
+            background-color: #f8f9fa !important;
+            color: #333 !important;
+        }}
+
+        .table-responsive {{
+            width: 100% !important;
+            overflow-x: auto;
+        }}
     </style></head><body><div class="container">
     <h1 class="text-center mb-5">{report_title}</h1>
     """
@@ -309,7 +351,7 @@ if uploaded_file is not None and config_file is not None:
 2. 以總受測人數 {total_accounts} 人計算，實測遭誘騙率約為 {(count_val/total_accounts)*100:.1f}%。此數據反映了第一線員工在面對疑似釣魚郵件時的防範意識，建議針對名單內人員進行後續輔導。
 """
         st.write(analysis_1)
-        with st.expander("🔍 查看詳細名單"): st.dataframe(u_users, use_container_width=True)
+        with st.expander("🔍 查看詳細名單"): st.dataframe(u_users, use_container_width=True, hide_index=True)
         report_items.append({"title": "統計一：遭誘騙受測名單分析", "df": mask_pii(u_users, name_col, email_col), "text": analysis_1, "metric_value": f"{count_val} 人", "chart": None})
 
         # --- 統計二：個人行為統計 ---
@@ -334,7 +376,16 @@ if uploaded_file is not None and config_file is not None:
 """
         st.write(analysis_2)
         draw_horizontal_label_chart(sum2, "項目", "人")
-        st.table(sum2.set_index("項目"))
+        # st.table(sum2.set_index("項目"))
+        # 找到統計二顯示表格的地方，改寫如下：
+        st.write("數據明細：")
+        # 建立一個複製品專門用來顯示
+        display_sum2 = sum2.copy()
+
+        # 將數值欄位轉為字串，這樣 Streamlit 就會預設靠左
+        display_sum2['人'] = display_sum2['人'].astype(str)
+        # 使用 dataframe 並透過 column_config 或是 CSS 控制
+        st.dataframe(display_sum2, use_container_width=True, hide_index=True)
         report_items.append({"title": "統計二：個人行為分布圖與數據分析", "df": sum2, "chart": draw_horizontal_label_chart(sum2, "項目", "人", is_export=True), "text": analysis_2})
 
         # --- 統計三：郵件主旨行為統計 ---
@@ -360,7 +411,12 @@ if uploaded_file is not None and config_file is not None:
 """
         st.markdown(analysis_3)
         draw_horizontal_label_chart(sum3, "項目", "次數", color="#ED7D31")
-        st.table(sum3.set_index("項目"))
+        # st.table(sum3.set_index("項目"))
+        st.write("數據明細：")
+        display_sum3=sum3.copy()
+        display_sum3['次數'] = display_sum3['次數'].astype(str)
+        # 使用 dataframe 並透過 column_config 或是 CSS 控制
+        st.dataframe(display_sum3, use_container_width=True, hide_index=True)
         report_items.append({"title": "統計三：郵件主旨行為統計分析", "df": sum3, "chart": draw_horizontal_label_chart(sum3, "項目", "次數", color="#ED7D31", is_export=True), "text": analysis_3})
 
         # --- 統計四：各單位受測人數分布 ---
@@ -463,6 +519,13 @@ if uploaded_file is not None and config_file is not None:
 
         # 在所有圖表前顯示唯一的分析文字
         st.markdown(analysis_6)
+        # 將結果存入 report_items 供匯出
+        report_items.append({
+            "title": f"統計六：【{tag}】行為名單與重複分析", 
+            "text": analysis_6,
+            "chart": None,
+            "df": None
+        })
 
         # 4. 【顯示階段 B：圖表與詳細名單】
         # 這裡照原順序跑出四個標籤的內容
@@ -486,18 +549,18 @@ if uploaded_file is not None and config_file is not None:
             
             # 詳細名單展開
             with st.expander(f"🔍 查看【{tag}】詳細名單 (含重複次數)"): 
-                st.dataframe(det.sort_values(by='次數', ascending=False), use_container_width=True)
+                st.dataframe(det.sort_values(by='次數', ascending=False), use_container_width=True, hide_index=True)
             
-            # 將結果存入 report_items 供匯出
+            # # 將結果存入 report_items 供匯出
             report_items.append({
                 "title": f"統計六：【{tag}】行為名單與重複分析", 
                 "df": mask_pii(det, name_col, email_col), 
                 "chart": draw_horizontal_label_chart(f_dist, "標籤", "帳號數量", color="#4472C4", is_export=True),
-                "text": analysis_6 if tag == best_tag_to_analyze else "" # 僅在核心標籤附帶分析文字
+                "text": "" # 僅在核心標籤附帶分析文字
             })
 
-        # --- 統計七：受測裝置載具分析 ---
-        st.divider(); st.subheader("📱 統計七：受測裝置載具分析")
+        # --- 統計七：受測裝置分析 ---
+        st.divider(); st.subheader("📱 統計七：受測裝置分析")
         if ua_col in df.columns:
             device_df = df.sort_values(by=email_col).drop_duplicates(subset=[email_col], keep='last').copy()
             device_df['裝置類型'] = device_df[ua_col].apply(parse_device)
@@ -536,11 +599,11 @@ if uploaded_file is not None and config_file is not None:
             st.table(sum7.set_index('裝置類型'))
             
             device_list = device_df[[name_col, email_col, '裝置類型', ua_col]].copy().sort_values(by='裝置類型')
-            with st.expander("🔍 查看載具詳細名單"): 
-                st.dataframe(device_list, use_container_width=True)
+            with st.expander("🔍 查看裝置詳細名單"): 
+                st.dataframe(device_list, use_container_width=True, hide_index=True)
             
             report_items.append({
-                "title": "統計七：載具分析名單", 
+                "title": "統計七：裝置分析名單", 
                 "df": mask_pii(device_list, name_col, email_col), 
                 "chart": draw_horizontal_label_chart(sum7, "裝置類型", "帳號數量", color="#7294D4", is_export=True),
                 "text": analysis_7
